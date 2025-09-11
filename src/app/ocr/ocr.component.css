@@ -43,3 +43,58 @@ mat-card {
   width: 100%;
   max-width: 640px;
 }
+.popup-widget {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  pointer-events: none; /* don't block taps */
+  transform: translate(-50%, -100%); /* center above word */
+  white-space: nowrap;
+  z-index: 20;
+}
+/* .video-wrapper {
+  position: relative;
+  width: 100%;          
+  max-width: 500px;     
+}
+
+video,
+canvas {
+  width: 100%;          
+  height: auto;       
+  display: block;
+} */
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 500px;        /* optional */
+  aspect-ratio: 16/9;      /* match your camera/video ratio */
+}
+
+video,
+canvas {
+  /* position: absolute; */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4); /* semi-transparent */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 20; /* above video & overlay */
+  color: white;
+  font-weight: bold;
+}
