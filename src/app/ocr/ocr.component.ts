@@ -51,118 +51,6 @@ export class OcrComponent {
   }
 
   photoCaptured = false;
-  //old local
-  // async capturePhoto() {
-  //   const video = this.video.nativeElement;
-  //   this.photoCaptured = true;
-
-  //   const canvas = this.processingCanvas.nativeElement;
-  //   const overlay = this.overlayCanvas.nativeElement;
-
-  //   // Set canvas to video’s natural resolution
-  //   canvas.width = video.videoWidth;
-  //   canvas.height = video.videoHeight;
-
-  //   overlay.width = video.videoWidth;
-  //   overlay.height = video.videoHeight;
-
-  //   const ctx = canvas.getContext('2d')!;
-  //   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  //   // Scale canvas to match video wrapper visually
-  //   canvas.style.width = video.clientWidth + 'px';
-  //   canvas.style.height = video.clientHeight + 'px';
-  //   overlay.style.width = video.clientWidth + 'px';
-  //   overlay.style.height = video.clientHeight + 'px';
-
-  //   const dataUrl = canvas.toDataURL('image/jpeg');
-  //   this.isLoading = true;
-
-  //   const worker = await createWorker(['eng', 'jpn']);
-  //   try {
-  //     await worker.setParameters({ tessedit_create_tsv: '3' });
-  //     const { data } = await worker.recognize(dataUrl, {}, { tsv: true });
-
-  //     this.extractedText = data.text;
-  //     if (data.tsv) {
-  //       this.words = this.parseTSV(data.tsv);
-  //       this.drawBoundingBoxes();
-  //     } else {
-  //       this.words = [];
-  //       console.warn('TSV data not available');
-  //     }
-  //   } catch (err) {
-  //     console.error('OCR error:', err);
-  //   } finally {
-  //     this.isLoading = false;
-  //     await worker.terminate();
-  //   }
-  // }
-
-  //old azure
-  // async capturePhoto() {
-  //   if (!this.video || !this.video.nativeElement) return;
-
-  //   const video = this.video.nativeElement;
-  //   const canvas = this.processingCanvas.nativeElement;
-  //   const overlay = this.overlayCanvas.nativeElement;
-
-  //   this.photoCaptured = true;
-
-  //   // Set canvas to video’s natural resolution
-  //   canvas.width = video.videoWidth;
-  //   canvas.height = video.videoHeight;
-  //   overlay.width = video.videoWidth;
-  //   overlay.height = video.videoHeight;
-
-  //   const ctx = canvas.getContext('2d')!;
-  //   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  //   // Optional: scale canvas visually to match wrapper
-  //   canvas.style.width = video.clientWidth + 'px';
-  //   canvas.style.height = video.clientHeight + 'px';
-  //   overlay.style.width = video.clientWidth + 'px';
-  //   overlay.style.height = video.clientHeight + 'px';
-
-  //   const dataUrl = canvas.toDataURL('image/jpeg');
-
-  //   this.isLoading = true;
-  //   this.words = [];
-  //   this.selectedWord = null;
-
-  //   try {
-  //     // Call Azure OCR service
-  //     const result = await this.azureOcrService.analyzeImage(dataUrl);
-
-  //     const regions = result.regions ?? [];
-  //     for (const region of regions) {
-  //       const lines = region.lines ?? [];
-  //       for (const line of lines) {
-  //         const words = line.words ?? [];
-  //         for (const word of words) {
-  //           if (!word.boundingBox) continue;
-
-  //           const [x, y, w, h] = word.boundingBox.split(',').map(Number);
-  //           this.words.push({
-  //             text: word.text ?? '',
-  //             bbox: { x0: x, y0: y, x1: x + w, y1: y + h },
-  //             conf: 1
-  //           });
-  //         }
-  //       }
-  //     }
-
-  //     // Combine text for extracted text preview
-  //     this.extractedText = this.words.map(w => w.text).join(' ');
-
-  //     // Draw bounding boxes
-  //     this.drawBoundingBoxes();
-  //   } catch (err) {
-  //     console.error('Azure OCR error:', err);
-  //   } finally {
-  //     this.isLoading = false;
-  //   }
-  // }
 
   async capturePhoto() {
     const video = this.video.nativeElement;
@@ -211,13 +99,20 @@ export class OcrComponent {
       (pollResult.readResults as AzurePage[]).forEach((page: AzurePage) => {
         page.lines.forEach((line: AzureLine) => {
           line.words.forEach((word: AzureWord) => {
-            const [x, y, w, h] = word.boundingBox;
+            const bb = word.boundingBox; // bb = [x0,y0, x1,y1, x2,y2, x3,y3]
+
+            const x0 = Math.min(bb[0], bb[2], bb[4], bb[6]);
+            const y0 = Math.min(bb[1], bb[3], bb[5], bb[7]);
+            const x1 = Math.max(bb[0], bb[2], bb[4], bb[6]);
+            const y1 = Math.max(bb[1], bb[3], bb[5], bb[7]);
+
             this.words.push({
               text: word.text,
-              bbox: { x0: x, y0: y, x1: x + w, y1: y + h },
+              bbox: { x0, y0, x1, y1 },
               conf: 1
             });
           });
+
         });
       });
 
@@ -234,12 +129,112 @@ export class OcrComponent {
   }
 
 
-  /** Handle clicks on overlay to select a word */
-  onOverlayClick(event: MouseEvent) {
-    if (!this.words || this.words.length === 0) return;
+  // /** Handle clicks on overlay to select a word */
+  // onOverlayClick(event: MouseEvent) {
+  //   if (!this.words || this.words.length === 0) return;
 
+  //   const canvas = this.overlayCanvas.nativeElement;
+  //   const rect = canvas.getBoundingClientRect();
+  //   const scaleX = canvas.width / rect.width;
+  //   const scaleY = canvas.height / rect.height;
+
+  //   const x = (event.clientX - rect.left) * scaleX;
+  //   const y = (event.clientY - rect.top) * scaleY;
+
+  //   const clickedWord = this.words.find(
+  //     w => x >= w.bbox.x0 && x <= w.bbox.x1 && y >= w.bbox.y0 && y <= w.bbox.y1
+  //   );
+
+  //   if (clickedWord) {
+  //     this.selectedWord = clickedWord;
+
+  //     // Show popup inside image overlay
+  //     this.popupPosition = {
+  //       x: clickedWord.bbox.x0,
+  //       y: clickedWord.bbox.y0 - 30 // offset above box
+  //     };
+
+  //     this.drawBoundingBoxes();
+  //     this.highlightWord(clickedWord);
+  //   }
+  // }
+
+  // /** Draw overlay boxes for all words */
+  // drawBoundingBoxes() {
+  //   const canvas = this.overlayCanvas.nativeElement;
+  //   const ctx = canvas.getContext('2d')!;
+  //   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  //   for (const word of this.words) {
+  //     const { x0, y0, x1, y1 } = word.bbox;
+
+  //     ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+  //     ctx.lineWidth = 2;
+  //     ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  //   }
+  // }
+  drawBoundingBoxes() {
+    const canvas = this.overlayCanvas.nativeElement;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const lines = this.groupWordsByLine(this.words);
+
+    lines.forEach(lineWords => {
+      const x0 = Math.min(...lineWords.map(w => w.bbox.x0));
+      const y0 = Math.min(...lineWords.map(w => w.bbox.y0));
+      const x1 = Math.max(...lineWords.map(w => w.bbox.x1));
+      const y1 = Math.max(...lineWords.map(w => w.bbox.y1));
+
+      ctx.fillStyle = 'rgba(255,255,0,0.3)';
+      const radius = 6;
+
+      ctx.beginPath();
+      ctx.moveTo(x0 + radius, y0);
+      ctx.lineTo(x1 - radius, y0);
+      ctx.quadraticCurveTo(x1, y0, x1, y0 + radius);
+      ctx.lineTo(x1, y1 - radius);
+      ctx.quadraticCurveTo(x1, y1, x1 - radius, y1);
+      ctx.lineTo(x0 + radius, y1);
+      ctx.quadraticCurveTo(x0, y1, x0, y1 - radius);
+      ctx.lineTo(x0, y0 + radius);
+      ctx.quadraticCurveTo(x0, y0, x0 + radius, y0);
+      ctx.closePath();
+      ctx.fill();
+
+      // highlight selected word individually
+      if (this.selectedWord && lineWords.includes(this.selectedWord)) {
+        const { x0: sx0, y0: sy0, x1: sx1, y1: sy1 } = this.selectedWord.bbox;
+        ctx.fillStyle = 'rgba(255,165,0,0.5)';
+        ctx.fillRect(sx0, sy0, sx1 - sx0, sy1 - sy0);
+      }
+    });
+  }
+  groupWordsByLine(words: any[]) {
+    const lines: any[][] = [];
+    words.sort((a, b) => a.bbox.y0 - b.bbox.y0);
+
+    let currentLine: any[] = [];
+    let lastY = -1;
+    const lineThreshold = 8; // pixels to decide same line
+
+    words.forEach(word => {
+      if (lastY === -1 || Math.abs(word.bbox.y0 - lastY) <= lineThreshold) {
+        currentLine.push(word);
+      } else {
+        lines.push(currentLine);
+        currentLine = [word];
+      }
+      lastY = word.bbox.y0;
+    });
+
+    if (currentLine.length) lines.push(currentLine);
+    return lines;
+  }
+  onOverlayClick(event: MouseEvent) {
     const canvas = this.overlayCanvas.nativeElement;
     const rect = canvas.getBoundingClientRect();
+
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
@@ -252,32 +247,13 @@ export class OcrComponent {
 
     if (clickedWord) {
       this.selectedWord = clickedWord;
-
-      // Show popup inside image overlay
-      this.popupPosition = {
-        x: clickedWord.bbox.x0,
-        y: clickedWord.bbox.y0 - 30 // offset above box
-      };
-
+      this.popupPosition = { x: clickedWord.bbox.x0, y: clickedWord.bbox.y0 - 25 }; // popup above word
+      this.extractedText = clickedWord.text;
       this.drawBoundingBoxes();
-      this.highlightWord(clickedWord);
     }
   }
 
-  /** Draw overlay boxes for all words */
-  drawBoundingBoxes() {
-    const canvas = this.overlayCanvas.nativeElement;
-    const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    for (const word of this.words) {
-      const { x0, y0, x1, y1 } = word.bbox;
-
-      ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-    }
-  }
 
   /** Highlight a single word with yellow overlay */
   highlightWord(word: any) {
