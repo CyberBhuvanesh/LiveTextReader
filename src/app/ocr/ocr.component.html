@@ -1,0 +1,28 @@
+<!-- ocr.component.html -->
+<div class="ocr-container">
+    <!-- <mat-toolbar color="primary"> -->
+        <span>📷 OCR Scanner</span>
+    <!-- </mat-toolbar> -->
+
+    <div class="video-wrapper">
+        <video #video autoplay muted playsinline></video>
+        <canvas #overlayCanvas class="overlay-canvas" (click)="onOverlayClick($event)"></canvas>
+        <canvas #processingCanvas hidden></canvas>
+    </div>
+
+    <div class="controls">
+        <button mat-raised-button color="accent" (click)="captureFrameForOCR()">Scan Frame</button>
+        <mat-progress-spinner *ngIf="isLoading" mode="indeterminate" [diameter]="40" color="warn"></mat-progress-spinner>
+    </div>
+
+    <p *ngIf="extractedText">Extracted Text:</p>
+    <pre>{{ extractedText }}</pre>
+    <!-- <mat-card *ngIf="extractedText">
+        <mat-card-header>
+            <mat-card-title>Extracted Text</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+            <pre>{{ extractedText }}</pre>
+        </mat-card-content>
+    </mat-card> -->
+</div>

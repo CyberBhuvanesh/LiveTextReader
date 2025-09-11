@@ -1,0 +1,281 @@
+import { Component, ElementRef, ViewChild } from '@angular/core';
+import heic2any from 'heic2any';
+import * as Tesseract from 'tesseract.js';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import Cropper from 'cropperjs';
+import { CropperComponent } from 'angular-cropperjs';
+
+@Component({
+  selector: 'app-ocr',
+  templateUrl: './ocr.component.html',
+  styleUrls: ['./ocr.component.css']
+})
+export class OcrComponent {
+  constructor(private sanitizer: DomSanitizer) { }
+
+  @ViewChild('angularCropper') public angularCropper!: CropperComponent;
+
+  @ViewChild('video', { static: false }) video!: ElementRef<HTMLVideoElement>;
+  @ViewChild('processingCanvas', { static: false }) processingCanvas!: ElementRef<HTMLCanvasElement>;
+
+
+  @ViewChild('overlayCanvas', { static: false }) overlayCanvas!: ElementRef<HTMLCanvasElement>;
+
+  imageCaptured = false;
+
+  ngAfterViewInit() {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        const video = this.video.nativeElement;
+        video.srcObject = stream;
+
+        video.onloadedmetadata = () => {
+          video.play();
+
+          // Delay canvas access to ensure Angular has initialized them
+          setTimeout(() => {
+            const overlay = this.overlayCanvas?.nativeElement;
+            const processing = this.processingCanvas?.nativeElement;
+
+
+            overlay.width = video.videoWidth;
+            overlay.height = video.videoHeight;
+
+            processing.width = video.videoWidth;
+            processing.height = video.videoHeight;
+          }, 0);
+        };
+      })
+      .catch(err => console.error('Camera error:', err));
+  }
+
+
+  extractedText: string = '';
+  isLoading: boolean = false;
+  imageUrl: SafeUrl = '';
+  cropper!: Cropper;
+  config = {
+    aspectRatio: 1,
+    viewMode: 1,
+    autoCropArea: 0.8,
+    responsive: true,
+    movable: true,
+    zoomable: true,
+    scalable: true,
+  };
+
+  selectionBox = {
+    x: 0,
+    y: 0,
+    width: 200,  // You can adjust this
+    height: 50   // You can adjust this
+  };
+
+  drawSelectionBox() {
+    const canvas = this.overlayCanvas.nativeElement;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      this.selectionBox.x,
+      this.selectionBox.y,
+      this.selectionBox.width,
+      this.selectionBox.height
+    );
+  }
+
+  capture() {
+    const video = this.video.nativeElement;
+    const canvas = document.createElement('canvas');
+    canvas.width = this.selectionBox.width;
+    canvas.height = this.selectionBox.height;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(
+      video,
+      this.selectionBox.x,
+      this.selectionBox.y,
+      this.selectionBox.width,
+      this.selectionBox.height,
+      0,
+      0,
+      this.selectionBox.width,
+      this.selectionBox.height
+    );
+
+    const dataUrl = canvas.toDataURL('image/jpeg');
+
+    Tesseract.recognize(dataUrl, 'eng', {
+      logger: m => console.log(m),
+    }).then(({ data: { text } }) => {
+      this.extractedText = text;
+      console.log('Extracted Text:', text);
+    });
+  }
+
+
+  onCanvasClick(event: MouseEvent) {
+    if (!this.imageCaptured) return;
+
+    const rect = this.processingCanvas.nativeElement.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    this.selectionBox = { x, y, width: 200, height: 50 };
+    this.drawSelectionBox();
+    this.extractSelectedRegion();
+  }
+
+  extractSelectedRegion() {
+    const canvas = document.createElement('canvas');
+    canvas.width = this.selectionBox.width;
+    canvas.height = this.selectionBox.height;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(
+      this.processingCanvas.nativeElement,
+      this.selectionBox.x,
+      this.selectionBox.y,
+      this.selectionBox.width,
+      this.selectionBox.height,
+      0,
+      0,
+      this.selectionBox.width,
+      this.selectionBox.height
+    );
+
+    const dataUrl = canvas.toDataURL('image/jpeg');
+
+    Tesseract.recognize(dataUrl, 'eng+jap', {
+      logger: m => console.log(m),
+    }).then(({ data: { text } }) => {
+      this.extractedText = text;
+      console.log('Extracted Text:', text);
+    });
+  }
+
+
+  onOverlayClick(event: MouseEvent) {
+    const canvas = this.overlayCanvas.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    this.selectionBox.x = x;
+    this.selectionBox.y = y;
+
+    this.drawSelectionBox(); 
+    this.captureFrame();
+  }
+
+  captureFrame() {
+    if (!this.video || !this.video.nativeElement || !this.processingCanvas?.nativeElement) {
+      console.warn('Required elements not ready');
+      return;
+    }
+
+    const video = this.video.nativeElement;
+    const canvas = this.processingCanvas.nativeElement;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(video, 0, 0);
+
+    // Create a new canvas for the selected region
+    const regionCanvas = document.createElement('canvas');
+    regionCanvas.width = this.selectionBox.width;
+    regionCanvas.height = this.selectionBox.height;
+
+    const regionCtx = regionCanvas.getContext('2d')!;
+    regionCtx.drawImage(
+      canvas,
+      this.selectionBox.x,
+      this.selectionBox.y,
+      this.selectionBox.width,
+      this.selectionBox.height,
+      0,
+      0,
+      this.selectionBox.width,
+      this.selectionBox.height
+    );
+
+    const dataUrl = regionCanvas.toDataURL('image/jpeg');
+
+    this.isLoading = true;
+    Tesseract.recognize(dataUrl, 'eng+jpn', {
+      logger: m => console.log(m),
+    }).then(({ data: { text } }) => {
+      this.extractedText = text;
+      this.isLoading = false;
+      console.log('Extracted Text:', text);
+    });
+  }
+
+
+  cropImage(): void {
+    if (!this.angularCropper || !this.angularCropper.cropper) {
+      console.warn('Cropper not ready yet');
+      return;
+    }
+
+    const canvas = this.angularCropper.cropper.getCroppedCanvas();
+    const croppedImage = canvas.toDataURL('image/jpeg');
+    console.log('Cropped Image:', croppedImage);
+    canvas.toBlob(blob => {
+      const imageUrl = URL.createObjectURL(blob!);
+      Tesseract.recognize(imageUrl, 'eng', {
+        logger: m => console.log(m),
+      }).then(({ data: { text } }) => {
+        this.extractedText = text;
+        URL.revokeObjectURL(imageUrl);
+      });
+    });
+  }
+
+
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file1 = input.files[0];
+    this.isLoading = true;
+    const fileType = file1.type;
+    console.log('file.name.toLowerCase(); ' + file1.name.toLowerCase());
+    var finalFile: any;
+    console.log('v filetype ' + fileType);
+    const fileName = file1.name.toLowerCase().trim();
+    if (fileName.endsWith('.heic')) {
+      console.log('herereeee');
+
+      finalFile = await this.convertHeicToJpeg(file1);
+      const fixedBlob = new Blob([finalFile], { type: 'image/jpeg' });
+      this.imageUrl = this.sanitizer.bypassSecurityTrustUrl(URL.createObjectURL(fixedBlob));
+    } else {
+      console.log('nooooooooo');
+      this.imageUrl = this.sanitizer.bypassSecurityTrustUrl(URL.createObjectURL(file1));
+    }
+
+    Tesseract.recognize(this.imageUrl.toString(), 'eng', {
+      logger: m => console.log(m)
+    }).then(({ data: { text } }) => {
+      this.extractedText = text;
+      this.isLoading = false;
+    }).catch(err => {
+      console.error('OCR error:', err);
+      this.isLoading = false;
+    });
+  }
+
+
+  async convertHeicToJpeg(file: File): Promise<Blob> {
+    return await heic2any({
+      blob: file,
+      toType: 'image/jpeg',
+      quality: 0.9,
+    }) as Blob;
+  }
+
+}
