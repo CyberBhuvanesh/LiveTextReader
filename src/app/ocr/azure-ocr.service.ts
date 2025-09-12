@@ -6,8 +6,8 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root'
 })
 export class AzureOcrService {
-  private endpoint = environment.azure_endpoint;
-  private apiKey = environment.azure_apiKey;
+  private endpoint = window.env.azureEndpoint;
+  private apiKey = window.env.azureApiKey;
 
   constructor(private http: HttpClient) { }
 
