@@ -7,11 +7,10 @@ import { environment } from './environments/environment';
 if (environment.production) {
   enableProdMode();
 }
-
+const baseHref = document.getElementsByTagName('base')[0].getAttribute('href') || '/';
 platformBrowserDynamic().bootstrapModule(AppModule)
   .catch(err => console.error(err));
-
-fetch('/assets/config.json')
+fetch(baseHref + 'assets/config.json')
   .then(res => res.json())
   .then((config: EnvConfig) => {
     window.env = config;
