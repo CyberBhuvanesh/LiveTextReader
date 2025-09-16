@@ -1,25 +1,18 @@
 <div class="ocr-container">
-    <span>📷 OCR Scanner</span>
+    <span>📷 OCR Scanner 📷</span>
 
-    <!-- Camera / photo area -->
     <div class="video-wrapper" style="position: relative;">
-        <!-- Live video -->
         <video #video autoplay muted playsinline *ngIf="!photoCaptured"></video>
     
-        <!-- Frozen photo -->
         <canvas #processingCanvas [hidden]="!photoCaptured"></canvas>
     
-        <!-- Overlay for bounding boxes -->
         <canvas #overlayCanvas class="overlay-canvas" (click)="onOverlayClick($event)"
             [hidden]="!photoCaptured"></canvas>
-    
-        <!-- 🔹 Popup widget -->
         <div *ngIf="selectedWord" class="popup-widget"
             [ngStyle]="{ left: popupPosition.x + 'px', top: popupPosition.y + 'px' }">
             {{ selectedWord.text }}
         </div>
     
-        <!-- 🔹 Loading overlay -->
         <div *ngIf="isLoading" class="loading-overlay">
             <mat-progress-spinner mode="indeterminate" [diameter]="50" color="accent"></mat-progress-spinner>
             <p>Scanning image...</p>
@@ -28,10 +21,7 @@
     
 
     <div class="controls">
-        <!-- Show capture button when live -->
         <button mat-raised-button color="accent" (click)="capturePhoto()" *ngIf="!photoCaptured">📸 Capture</button>
-
-        <!-- Show retake button when photo is captured -->
         <button mat-raised-button color="primary" (click)="retakePhoto()" *ngIf="photoCaptured">🔄 Retake</button>
 
         <mat-progress-spinner *ngIf="isLoading" mode="indeterminate" [diameter]="40"

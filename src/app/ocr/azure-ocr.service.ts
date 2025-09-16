@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -12,10 +11,7 @@ export class AzureOcrService {
   constructor(private http: HttpClient) { }
 
   async readImage(dataUrl: string): Promise<any> {
-    // Convert data URL to Blob
     const blob = this.dataURLtoBlob(dataUrl);
-
-    // Send image to Read API
     const headers = new HttpHeaders({
       'Ocp-Apim-Subscription-Key': this.apiKey,
       'Content-Type': 'application/octet-stream'
@@ -24,11 +20,9 @@ export class AzureOcrService {
     const url = `${this.endpoint}vision/v3.2/read/analyze`;
     const response: any = await this.http.post(url, blob, { headers, observe: 'response' }).toPromise();
 
-    // Get operation location URL
     const operationLocation = response.headers.get('operation-location');
     if (!operationLocation) throw new Error('No operation location returned from Azure.');
 
-    // Poll until operation is completed
     let result: any = null;
     let status = 'running';
     while (status === 'running' || status === 'notStarted') {
