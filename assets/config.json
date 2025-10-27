@@ -1,4 +1,4 @@
 {
     "azureApiKey": "9uStgMEVw5O5ryMX2Y37jnDBkEVQZRJPOcfIaX5O3znjUXpHCDaVJQQJ99BIACi0881XJ3w3AAAFACOGhfx7",
-    "azureEndpoint": "https://computer-vision-dla.cognitiveservices.azure.com/computervision/imageanalysis:analyze?api-version=2023-10-01&features=read"
+    "azureEndpoint": "https://computer-vision-dla.cognitiveservices.azure.com/"
 }
